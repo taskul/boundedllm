@@ -1,4 +1,4 @@
-# AgentGuard
+# BoundedLLM
 
 **Bounds what a compromised agent can reach and do.**
 
