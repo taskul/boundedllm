@@ -1,0 +1,26 @@
+# The lab is published; its local state is not.
+#
+# The root .gitignore already covers these. They are repeated here so a
+# standalone copy of testApp/ carries its own protection rather than depending
+# on where it happens to be checked out.
+
+# The live ANTHROPIC_API_KEY lives here. .env.example is the committed template.
+.env
+.env.*
+!.env.example
+
+# Development pepper: keeps local password hashes and sessions valid across
+# restarts, which makes it a credential even in a synthetic lab.
+.roadshield-dev-secret
+
+# Seeded customers, conversations, attack history, and the guard's ledger.
+*.db
+*.db-shm
+*.db-wal
+
+.venv/
+.uv-cache/
+.pytest_cache/
+.ruff_cache/
+__pycache__/
+*.py[cod]

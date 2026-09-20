@@ -1,0 +1,109 @@
+# Publish to PyPI on a version tag, using Trusted Publishing.
+#
+# There is no API token anywhere in this workflow or in repository secrets. PyPI
+# verifies a short-lived OIDC identity issued by GitHub for this exact repository,
+# workflow, and environment, and mints a token valid for minutes. A leaked repo
+# secret is the usual way packages get hijacked; this removes the secret.
+#
+# One-time setup on PyPI, before the first tag:
+#   1. https://pypi.org/manage/account/publishing/  ->  Add a pending publisher
+#        PyPI project name : agentguard
+#        Owner             : <your GitHub account or org>
+#        Repository        : agentguard
+#        Workflow          : release.yml
+#        Environment       : pypi
+#   2. In GitHub: Settings -> Environments -> New environment -> "pypi".
+#      Add yourself as a required reviewer so a tag cannot publish unattended.
+#
+# Then:  git tag v0.4.0 && git push origin v0.4.0
+name: release
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  # Build once. The same artifacts are tested, published, and attached to the
+  # release, so what people install is what CI checked.
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        with: { enable-cache: true }
+
+      # The tag must match the packaged version, or users get a release whose
+      # contents disagree with its name.
+      - name: Tag matches package version
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG=$(uv run --no-project python -c "import tomllib,pathlib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")
+          test "$TAG" = "$PKG" || { echo "tag $TAG != version $PKG"; exit 1; }
+          grep -q "## \[$PKG\]" CHANGELOG.md || { echo "no CHANGELOG entry for $PKG"; exit 1; }
+
+      - run: uv build
+      # twine check catches a README that will not render on PyPI, which is only
+      # discoverable after an irreversible upload otherwise.
+      - run: uvx twine check --strict dist/*
+
+      # Install the built wheel in a clean environment and use it. A package that
+      # imports only from the source tree passes every other job and fails here.
+      - name: Installed wheel is importable and runnable
+        run: |
+          uv venv /tmp/fresh
+          VIRTUAL_ENV=/tmp/fresh uv pip install dist/*.whl
+          /tmp/fresh/bin/python -c "import agentguard; print('import ok', agentguard.__version__)"
+          VIRTUAL_ENV=/tmp/fresh uv pip install "$(ls dist/*.whl)[sql]"
+          /tmp/fresh/bin/agentguard demo > /dev/null && echo "cli ok"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: dist
+          path: dist/
+
+  pypi:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: pypi
+      url: https://pypi.org/p/agentguard
+    permissions:
+      # The OIDC token PyPI verifies. Nothing else needs write access.
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
+
+  github-release:
+    needs: pypi
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      # Signs the artifacts so a downloader can prove they came from this workflow.
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: dist
+          path: dist/
+      - uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        with:
+          subject-path: dist/*
+      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          body: |
+            Install: `pip install agentguard==${{ github.ref_name }}`
+
+            See [CHANGELOG.md](CHANGELOG.md) for what changed and whether it breaks.

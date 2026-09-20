@@ -1,0 +1,11 @@
+# Keep local environments, build data, and the attack simulator out of images.
+.git
+.venv
+.uv-cache
+.pytest_cache
+.ruff_cache
+.dist-check
+dist
+__pycache__
+*.db*
+testApp

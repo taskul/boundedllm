@@ -1,0 +1,204 @@
+# Every prompt, policy, dependency, and code change runs deterministic checks.
+#
+# Actions are pinned to commit SHAs, not tags. A tag is mutable, so an upstream
+# account compromise would otherwise reach a workflow that holds repository
+# credentials. The comment after each SHA records the human-readable version.
+# Re-resolve them with a tool rather than by hand:
+#   go install github.com/suzuki-shunsuke/pinact/cmd/pinact@latest && pinact run
+name: security
+on: [push, pull_request]
+permissions:
+  contents: read
+
+jobs:
+  library:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        with: { enable-cache: true }
+      - run: uv sync --locked --dev --all-extras
+      - run: uv run pytest -q
+      # The quickstart example is executed by tests/test_documentation.py.
+      - run: uv run ruff check src tests
+      - run: uv run ruff format --check src tests
+      # pip-audit's --locked flag reads a PEP 751 pylock.toml, not uv.lock, so it
+      # failed to resolve anything to audit. Export the locked runtime set and
+      # audit that instead: it is the exact dependency set the wheel ships.
+      - run: uv export --no-dev --no-emit-project --all-extras --format requirements-txt -o requirements.lock.txt
+      - run: uv run pip-audit -r requirements.lock.txt --disable-pip
+
+  # The core's whole claim is that a host keeps its own storage. If importing it
+  # ever needs a database driver again, this job fails before anything else does.
+  core-has-no-storage-dependency:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        with: { enable-cache: true }
+      # Deliberately no extras: install the package exactly as `pip install
+      # agentguard` would, then use it.
+      - run: uv venv && uv pip install .
+      - run: |
+          uv run --no-project python - <<'PY'
+          import importlib.util
+          for forbidden in ("sqlalchemy", "fastapi", "httpx", "jwt", "pydantic_settings"):
+              assert importlib.util.find_spec(forbidden) is None, f"{forbidden} reached the core install"
+          import agentguard
+          from agentguard import ChatRequest, Guard, Limits, Principal  # noqa: F401
+          print("core import surface is storage-free:", agentguard.__version__)
+          PY
+
+  # PostgreSQL is where production runs and was the least-exercised path.
+  postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: guard_test
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+        ports: ["5432:5432"]
+    env:
+      TEST_POSTGRES_URL: postgresql+psycopg://postgres:postgres@localhost:5432/guard_test
+      GUARD_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/guard_test
+      GUARD_AUDIT_KEY: ci-only-not-a-secret-at-least-32-bytes-long
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        with: { enable-cache: true }
+      - run: uv sync --locked --dev --all-extras
+      # Migrations must apply cleanly and then report no drift from the models.
+      # Drift is how a schema quietly stops matching the ACL predicates built on it.
+      - run: uv run agentguard migrate
+      - run: uv run alembic -c src/agentguard/adapters/sql/alembic.ini check
+      - run: uv run agentguard enable-rls
+      # RLS isolation, the contrib adapters' ACL predicates, and the concurrent
+      # audit-chain test all need a real database.
+      # RLS isolation, the contrib adapters' ACL predicates, the concurrent
+      # audit chain, and the monetary paths all need a database that actually
+      # honours with_for_update(). On SQLite those locks are silent no-ops.
+      - run: uv run pytest -q tests/test_postgres.py tests/test_contrib.py tests/test_money_concurrency.py
+
+  attack-lab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        with: { enable-cache: true }
+      - run: uv sync --locked --dev
+        working-directory: testApp
+      - run: uv run pytest -q
+        working-directory: testApp
+      - run: uv run ruff check roadshield tests scripts run.py
+        working-directory: testApp
+      - run: uv run ruff format --check roadshield tests scripts run.py
+        working-directory: testApp
+
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: docker build -t agentguard:ci .
+      # Run it the way the Dockerfile documents: read-only tree, tmpfs, no extra
+      # capabilities. A container that only starts when it can write to itself is
+      # not the artifact we intend to ship.
+      - run: |
+          docker run -d --name guard-ci -p 8000:8000 \
+            --read-only --tmpfs /tmp:rw,noexec,nosuid,size=64m \
+            --cap-drop ALL --security-opt no-new-privileges \
+            -e GUARD_AUDIT_KEY=ci-only-not-a-secret-at-least-32-bytes-long \
+            -e GUARD_DATABASE_URL=sqlite:////tmp/guard.db \
+            -e GUARD_MODEL_URL=https://model.example.com/v1/complete \
+            agentguard:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/health/live; then echo; break; fi
+            if [ "$i" = "30" ]; then echo "never became live"; docker logs guard-ci; exit 1; fi
+            sleep 2
+          done
+          test "$(docker inspect -f '{{.Config.User}}' agentguard:ci)" = "app" \
+            || { echo "image does not run as the unprivileged app user"; exit 1; }
+      - if: always()
+        run: docker rm -f guard-ci || true
+
+  # A dependency inventory that ships with the release, so a downstream consumer
+  # can answer "are we affected" without rebuilding the image.
+  sbom:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        with: { enable-cache: true }
+      - run: uv sync --locked --all-extras --no-dev
+      - uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        with:
+          path: .
+          format: cyclonedx-json
+          artifact-name: sbom.cyclonedx.json
+
+  codeql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: github/codeql-action/init@faaca9a8f6edddba5725ffe5adefdab6669a2eca # v3
+        with:
+          languages: python
+          queries: security-extended
+      - uses: github/codeql-action/analyze@faaca9a8f6edddba5725ffe5adefdab6669a2eca # v3
+
+  secrets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          # Full history: a key removed in a later commit is still a leaked key.
+          fetch-depth: 0
+      # .gitleaks.toml extends the defaults. Verified against synthetic
+      # high-entropy credentials: the defaults catch AWS, GitHub, Stripe and
+      # Slack but have no Anthropic rule, which is this repository's most likely
+      # leak. Do not drop the config and assume useDefault covers it.
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
+
+  # Not a benchmark. This asserts the ceilings actually bind under concurrency,
+  # because a quota that only holds in a single-threaded test is not a quota.
+  load:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: guard_load
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+        ports: ["5432:5432"]
+    env:
+      GUARD_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/guard_load
+      GUARD_AUDIT_KEY: ci-only-not-a-secret-at-least-32-bytes-long
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        with: { enable-cache: true }
+      - run: uv sync --locked --dev --all-extras
+      - run: uv run agentguard migrate
+      - run: uv run python scripts/load_check.py

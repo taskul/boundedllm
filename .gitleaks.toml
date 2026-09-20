@@ -1,0 +1,67 @@
+# Secret-scanning rules, extending the gitleaks defaults.
+#
+# The defaults were verified against synthetic high-entropy credentials and do
+# detect AWS, GitHub, Stripe, and Slack tokens. They do **not** detect an
+# Anthropic API key: as of gitleaks v8.30.1 there is no rule for the
+# `sk-ant-...` format, and the `generic-api-key` heuristic did not fire on it
+# either, though it did fire on an OpenAI key in the same file.
+#
+# That matters more here than it would elsewhere. This repository ships an
+# example application wired to Claude, so an Anthropic key in a `.env` is the
+# single most likely credential to be committed by accident. Relying on the
+# default ruleset would have left exactly that case unscanned.
+#
+# The provider rules below are written as explicit prefixes rather than entropy
+# heuristics, because a prefix match has no false-negative cliff at short
+# lengths and these formats are unambiguous.
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "anthropic-api-key"
+description = "Anthropic API key (sk-ant-...)"
+# Covers both the standard api keys and admin keys, whose middle segment differs.
+regex = '''sk-ant-(?:api|admin)[0-9]{0,3}-[A-Za-z0-9_\-]{32,200}'''
+keywords = ["sk-ant-"]
+
+[[rules]]
+id = "openai-api-key-explicit"
+description = "OpenAI API key (sk-... / sk-proj-...)"
+# The default config catches this only via the generic heuristic, which depends
+# on the surrounding assignment. An explicit rule removes that dependency.
+regex = '''sk-(?:proj-)?[A-Za-z0-9_\-]{32,200}'''
+keywords = ["sk-proj-", "sk-"]
+
+[[rules]]
+id = "guard-audit-key"
+description = "This package's own audit signing key"
+# GUARD_AUDIT_KEY signs the tamper-evident ledger. A leaked one lets an attacker
+# forge audit records, so it is a credential in its own right even though it has
+# no vendor prefix to match on.
+regex = '''(?i)GUARD_AUDIT(?:_PSEUDONYM)?_KEY\s*[=:]\s*["']?([A-Za-z0-9_\-+/=]{32,})'''
+keywords = ["GUARD_AUDIT_KEY", "GUARD_AUDIT_PSEUDONYM_KEY"]
+
+[allowlist]
+description = "Documented placeholders and test fixtures that are not credentials"
+paths = [
+  # Dependency caches and build output are not part of the repository.
+  '''\.venv/''',
+  '''\.uv-cache/''',
+  '''\.dist-check/''',
+  '''uv\.lock''',
+]
+regexes = [
+  # The committed example file and the docs deliberately show the shape of a
+  # secret without containing one.
+  '''replace-with-at-least-32-random-bytes''',
+  '''replace-me-32-bytes-minimum-secret''',
+  '''ci-only-not-a-secret-at-least-32-bytes-long''',
+  '''old-key-at-least-32-bytes-long''',
+  '''test-secret-never-logged''',
+  # tests/test_adversarial.py asserts that secret-shaped model output is blocked
+  # before release. The fixture has to look like a credential for the test to
+  # mean anything. Allowlisted by exact value rather than by exempting the tests
+  # directory, so a genuine credential committed there would still be reported.
+  '''sk-live-4f9a2b7c1d8e6f3a0b5c9d2e''',
+]

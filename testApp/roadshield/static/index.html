@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RoadShield Insurance Security Lab</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="RoadShield home"><span>RS</span> RoadShield</a>
+    <div><span id="signed-in-name"></span><button id="logout" class="quiet hidden">Sign out</button></div>
+  </header>
+  <main>
+    <section id="login-view" class="login-shell">
+      <div class="login-copy">
+        <p class="eyebrow">Synthetic insurance environment</p>
+        <h1>Coverage you understand.<br>Security you can test.</h1>
+        <p>RoadShield is a local attack lab. Every customer, vehicle, policy, and claim shown here is fictional.</p>
+        <div class="shield-card"><strong>Protected agent boundary</strong><span>Tenant ACLs · PII controls · tool authorization · audited decisions</span></div>
+      </div>
+      <form id="login-form" class="panel login-panel">
+        <p class="eyebrow">Customer portal</p><h2>Sign in</h2>
+        <label>Tenant<input id="tenant" value="roadshield-midwest" autocomplete="organization"></label>
+        <label>Email<input id="email" type="email" value="alice@roadshield.test" autocomplete="username"></label>
+        <label>Password<input id="password" type="password" value="Demo-Alice-2026!" autocomplete="current-password"></label>
+        <label>MFA code (security administrators)<input id="mfa-code" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" autocomplete="one-time-code"></label>
+        <button type="submit" class="primary">Open dashboard</button>
+        <p id="login-error" class="error" role="alert"></p>
+        <p class="demo-note">Demo: <code>roadshield-midwest</code> · <code>alice@roadshield.test</code> · <code>Demo-Alice-2026!</code></p>
+      </form>
+    </section>
+
+    <section id="app-view" class="hidden">
+      <div class="hero-row"><div><p class="eyebrow">Customer overview</p><h1>Welcome back, <span id="first-name"></span>.</h1></div><div class="status-pill">Policy active</div></div>
+      <div id="customer-dashboard" class="dashboard-grid">
+        <section class="panel profile"><h2>Customer</h2><dl id="profile"></dl></section>
+        <section class="panel policy"><h2>Your policy</h2><div id="policies"></div></section>
+        <section class="panel claims"><h2>Recent claims</h2><div id="claims"></div></section>
+      </div>
+
+      <section id="customer-agent" class="agent-grid">
+        <div class="panel chat-panel">
+          <p class="eyebrow">Guarded assistant</p><h2>Ask RoadShield</h2>
+          <p id="model-status" class="model-status">Checking model connection…</p>
+          <div id="chat-log" class="chat-log" aria-live="polite"><p class="assistant">Ask about coverage, deductibles, claims, or renewals.</p></div>
+          <form id="chat-form" class="chat-form">
+            <input id="chat-input" maxlength="4000" placeholder="What does comprehensive coverage include?" required>
+            <label class="file-button">Attach PDF<input id="chat-file" type="file" accept="application/pdf,.pdf"></label>
+            <button class="primary">Send</button>
+          </form>
+          <p id="upload-status" class="upload-status">PDFs are extracted as untrusted, tenant-scoped RAG data.</p>
+        </div>
+        <div class="panel lab-panel">
+          <p class="eyebrow danger">Attack simulator</p><h2>Test the wrapper</h2>
+          <p class="muted">Each scenario probes the connected model and wrapper. A green result means the security boundary held.</p>
+          <div id="scenarios" class="scenario-list"></div>
+        </div>
+      </section>
+      <section id="customer-history" class="panel history-panel"><h2>Simulation history</h2><div id="history" class="history"></div></section>
+      <section id="security-console" class="panel security-console hidden">
+        <p class="eyebrow danger">Security operations</p><h2>LLM Guard audit console</h2>
+        <div class="security-summary">
+          <div><strong id="security-count">0</strong><span>events</span></div>
+          <div><strong id="security-integrity">checking</strong><span>ledger integrity</span></div>
+          <div><strong id="security-quarantine">0</strong><span>quarantined documents</span></div>
+        </div>
+        <form id="event-filter" class="event-filter">
+          <label>Event type<input id="event-type" maxlength="64" placeholder="request_blocked"></label>
+          <label>Severity<select id="event-severity"><option value="">All</option><option>info</option><option>medium</option><option>high</option><option>critical</option></select></label>
+          <label>Model<input id="event-model" maxlength="128" placeholder="claude-sonnet-4-6"></label>
+          <label>User fingerprint<input id="event-subject" maxlength="64" pattern="[a-f0-9]{64}" placeholder="64-character HMAC"></label>
+          <label>Since<input id="event-since" type="datetime-local"></label>
+          <button class="primary" type="submit">Filter</button>
+        </form>
+        <div class="audit-table-wrap"><table class="audit-table"><thead><tr><th>Sequence</th><th>Time</th><th>Event</th><th>Status</th><th>Severity</th><th>Request</th><th>Case</th></tr></thead><tbody id="security-events"></tbody></table></div>
+        <h3>Quarantine</h3><div id="quarantine-list" class="history"></div>
+        <p class="muted">This console displays metadata only. Prompt text, model responses, files, credentials, and PII are excluded.</p>
+      </section>
+    </section>
+  </main>
+  <footer>RoadShield Security Lab · synthetic data only · local testing environment</footer>
+  <script src="/static/app.js" defer></script>
+</body>
+</html>

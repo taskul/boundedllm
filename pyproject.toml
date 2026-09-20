@@ -1,0 +1,107 @@
+# The same installable package backs embedded integrations, the CLI, and the API.
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "agentguard"
+version = "0.4.0"
+description = "Bound what a compromised LLM agent can reach and do"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+# Replace both. This is published on PyPI and is publicly visible, so consider a
+# dedicated address rather than a personal one.
+authors = [{ name = "Your Name", email = "you@example.com" }]
+keywords = [
+  "llm", "agent", "security", "prompt-injection", "authorization",
+  "multi-tenant", "audit", "guardrails", "rag", "ai-safety",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Intended Audience :: System Administrators",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Security",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Typing :: Typed",
+]
+# The core is the turn engine plus the port contracts. It validates data and
+# nothing else, so a host embedding it pays for no database driver, HTTP client,
+# or web framework it did not ask for. Everything below is an adapter.
+dependencies = ["pydantic>=2.12,<3"]
+
+[project.optional-dependencies]
+# The bundled SQL implementation of every port.
+sql = ["sqlalchemy>=2.0.48,<3", "pydantic-settings>=2.13,<3", "alembic>=1.16,<2"]
+postgres = ["psycopg[binary]>=3.3,<4"]
+# The reference HTTP adapter, its JWT authenticator, and outbound transports.
+api = [
+  "fastapi>=0.135,<1", "uvicorn>=0.41,<1", "pydantic-settings>=2.13,<3",
+  "httpx>=0.28,<1", "PyJWT[crypto]>=2.12,<3", "cryptography>=50,<51",
+  "sqlalchemy>=2.0.48,<3",
+]
+# Everything, which is what the reference deployment and CI install.
+all = [
+  "agentguard[sql,postgres,api]",
+]
+# Ready-made port implementations in agentguard.contrib.
+pgvector = ["psycopg[binary,pool]>=3.3,<4"]
+anthropic = ["anthropic>=0.75,<2"]
+# Presidio is optional because deployments must choose and evaluate their own DLP.
+pii = ["presidio-analyzer>=2.2,<3", "presidio-anonymizer>=2.2,<3"]
+telemetry = [
+  "opentelemetry-api>=1.39,<2", "opentelemetry-sdk>=1.39,<2",
+  "opentelemetry-exporter-otlp-proto-http>=1.39,<2",
+]
+
+[dependency-groups]
+dev = [
+  "agentguard[all]",
+  "pytest>=8.4,<10", "pytest-asyncio>=1.3,<2", "ruff>=0.15,<1",
+  "pip-audit>=2.10,<3", "build>=1.4,<2",
+]
+
+[project.urls]
+# PyPI renders these as sidebar links. Replace ORG with your GitHub account.
+Homepage = "https://github.com/REPLACE_ORG/agentguard"
+Repository = "https://github.com/REPLACE_ORG/agentguard"
+Changelog = "https://github.com/REPLACE_ORG/agentguard/blob/main/CHANGELOG.md"
+Issues = "https://github.com/REPLACE_ORG/agentguard/issues"
+"Security Policy" = "https://github.com/REPLACE_ORG/agentguard/blob/main/SECURITY.md"
+
+[project.scripts]
+agentguard = "agentguard.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agentguard"]
+# Migrations are part of the shipped adapter, not repository tooling. Without
+# these the wheel installs a package whose documented production path cannot run.
+artifacts = [
+  "src/agentguard/adapters/sql/alembic.ini",
+  "src/agentguard/adapters/sql/migrations/**/*",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = ["postgres: requires TEST_POSTGRES_URL pointing to a disposable PostgreSQL database"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 110
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "B", "UP", "S"]
+ignore = ["S101"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests construct SQL against the adapter's own validated table name and run
+# a known interpreter on a file they just wrote.
+"tests/*" = ["S105", "S106", "S603", "S608"]
