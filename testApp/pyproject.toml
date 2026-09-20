@@ -25,6 +25,11 @@ boundedllm = { path = "..", editable = true }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Put the repository root on sys.path. Without this, `pytest` works only when
+# invoked as `python -m pytest`, which silently inserts the working directory.
+# CI runs the console script, so a test importing a sibling package passed
+# locally and failed there.
+pythonpath = ["."]
 
 [tool.ruff]
 target-version = "py311"

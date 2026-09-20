@@ -11,9 +11,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
-# Replace both. This is published on PyPI and is publicly visible, so consider a
-# dedicated address rather than a personal one.
-authors = [{ name = "Your Name", email = "you@example.com" }]
+authors = [{ name = "Tastan Kulmeshkenov", email = "tastankulmeshkenov@gmail.com" }]
 keywords = [
   "llm", "agent", "security", "prompt-injection", "authorization",
   "multi-tenant", "audit", "guardrails", "rag", "ai-safety",
@@ -90,6 +88,11 @@ artifacts = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Put the repository root on sys.path. Without this, `pytest` works only when
+# invoked as `python -m pytest`, which silently inserts the working directory.
+# CI runs the console script, so a test importing a sibling package passed
+# locally and failed there.
+pythonpath = ["."]
 asyncio_mode = "auto"
 markers = ["postgres: requires TEST_POSTGRES_URL pointing to a disposable PostgreSQL database"]
 

@@ -1,0 +1,42 @@
+# Line-ending and binary policy.
+#
+# This exists because git silently corrupted a binary test fixture. With
+# core.autocrlf=true on Windows and no rule here, git applied CRLF conversion to
+# roadshield-claims-update-poisoned.pdf, adding 74 bytes. The file was fine in
+# the working tree and broken for everyone who cloned, and the failure surfaced
+# as "PDF could not be safely parsed" in CI rather than as anything resembling a
+# line-ending problem. Git for Windows also ships a default attribute marking
+# PDFs `diff: astextplain`, which makes them look text-like.
+
+# Normalize text to LF in the repository regardless of the committer's platform.
+# Checkout still converts for Windows users who want CRLF locally.
+* text=auto eol=lf
+
+# Never touch these. The list is deliberately broad: the cost of a missing entry
+# is a corrupted file that passes locally, and the cost of a spurious one is none.
+*.pdf   binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.webp  binary
+*.zip   binary
+*.gz    binary
+*.tar   binary
+*.whl   binary
+*.db    binary
+*.sqlite binary
+*.sst   binary
+*.pem   binary
+*.p12   binary
+*.pfx   binary
+*.pyc   binary
+
+# Shell scripts must keep LF even when checked out on Windows, or they fail to
+# run in a Linux container with a confusing "bad interpreter" error.
+*.sh    text eol=lf
+Dockerfile text eol=lf
+
+# Lockfiles are generated; collapsing their diffs keeps reviews readable.
+uv.lock linguist-generated=true
