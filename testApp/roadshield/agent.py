@@ -2,7 +2,7 @@
 
 import json
 
-from agentguard.model_gateway import ModelRequest
+from boundedllm.model_gateway import ModelRequest
 
 
 class InsuranceAgentProvider:

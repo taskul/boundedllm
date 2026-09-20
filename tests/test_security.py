@@ -9,27 +9,27 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import create_engine, insert, inspect, select, update
 
-from agentguard.adapters.sql import sql_ports
-from agentguard.adapters.sql.schema import audit_events
-from agentguard.adapters.sql.store import SQLStore
-from agentguard.audit import Audit
-from agentguard.config import Settings
-from agentguard.egress import inspect_egress
-from agentguard.engine import Guard
-from agentguard.errors import Denied, OutputBlocked, Unavailable
-from agentguard.model_gateway import ModelRequest
-from agentguard.models import (
+from boundedllm.adapters.sql import sql_ports
+from boundedllm.adapters.sql.schema import audit_events
+from boundedllm.adapters.sql.store import SQLStore
+from boundedllm.audit import Audit
+from boundedllm.config import Settings
+from boundedllm.egress import inspect_egress
+from boundedllm.engine import Guard
+from boundedllm.errors import Denied, OutputBlocked, Unavailable
+from boundedllm.model_gateway import ModelRequest
+from boundedllm.models import (
     ChatRequest,
     ChatResponse,
     Document,
     IngestRequest,
     Principal,
 )
-from agentguard.normalize import normalize
-from agentguard.parsing import parse_assistant_output
-from agentguard.risk import assess
-from agentguard.support import SupportPolicy, SupportSQLStore, ToolGateway
-from agentguard.support.schema import accounts
+from boundedllm.normalize import normalize
+from boundedllm.parsing import parse_assistant_output
+from boundedllm.risk import assess
+from boundedllm.support import SupportPolicy, SupportSQLStore, ToolGateway
+from boundedllm.support.schema import accounts
 
 
 class FixtureProvider:
@@ -376,7 +376,7 @@ def test_additive_migration_quarantines_unowned_legacy_uploads(tmp_path):
     assert {"owner_subject", "conversation_id", "upload_state", "content_hash", "retention_policy"} <= columns
     with store.engine.connect() as conn:
         # Use the package table after migration; the legacy upload cannot become shared data.
-        from agentguard.adapters.sql.schema import documents
+        from boundedllm.adapters.sql.schema import documents
 
         row = conn.execute(
             select(documents.c.upload_state, documents.c.retention_policy).where(
@@ -742,7 +742,7 @@ def test_a_tenant_with_no_events_verifies_as_intact(tmp_path):
     assert report["head_valid"] is True
 
     # A head that claims events which are not present is still a failure.
-    from agentguard.adapters.sql.schema import audit_heads
+    from boundedllm.adapters.sql.schema import audit_heads
 
     with store.transaction("never-used") as conn:
         conn.execute(audit_heads.insert().values(tenant_id="never-used", last_sequence=7, last_hash="f" * 64))

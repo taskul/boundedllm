@@ -13,16 +13,16 @@ try:
 except ModuleNotFoundError:  # The standard SSL context is a secure fallback on supported Python builds.
     truststore = None
 
-from agentguard.adapters.sql import sql_ports
-from agentguard.audit import Audit
-from agentguard.config import Settings as GuardSettings
-from agentguard.engine import Guard
-from agentguard.errors import Denied
-from agentguard.middleware import SecurityMiddleware
-from agentguard.models import ChatRequest, IngestRequest, Principal
-from agentguard.normalize import normalize
-from agentguard.risk import assess
-from agentguard.support import SupportPolicy, SupportSQLStore, ToolGateway
+from boundedllm.adapters.sql import sql_ports
+from boundedllm.audit import Audit
+from boundedllm.config import Settings as GuardSettings
+from boundedllm.engine import Guard
+from boundedllm.errors import Denied
+from boundedllm.middleware import SecurityMiddleware
+from boundedllm.models import ChatRequest, IngestRequest, Principal
+from boundedllm.normalize import normalize
+from boundedllm.risk import assess
+from boundedllm.support import SupportPolicy, SupportSQLStore, ToolGateway
 from fastapi import (
     Cookie,
     Depends,

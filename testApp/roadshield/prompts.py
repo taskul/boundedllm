@@ -1,6 +1,6 @@
 """RoadShield's public, versioned business and security instructions for Claude."""
 
-from agentguard.prompts import SYSTEM_POLICY
+from boundedllm.prompts import SYSTEM_POLICY
 
 ROADSHIELD_SYSTEM_POLICY = f"""{SYSTEM_POLICY}
 

@@ -1,4 +1,4 @@
-# AgentGuard
+# BoundedLLM
 
 **Bounds what a compromised agent can reach and do.**
 
@@ -18,7 +18,7 @@ that never asked the model anything.
 |---|---|
 | Start here | [`QUICKSTART.md`](QUICKSTART.md) — ten minutes, three steps |
 | Core install | `pydantic` only — no database, HTTP client, or web framework |
-| Storage | Yours, via five protocols in `agentguard.ports`; a SQL adapter is bundled |
+| Storage | Yours, via five protocols in `boundedllm.ports`; a SQL adapter is bundled |
 | Assurance | No third-party audit yet; see [`SECURITY.md`](SECURITY.md#assurance-status) |
 | Operating it | [`OPERATIONS.md`](OPERATIONS.md) — keys, backups, limits, incidents |
 | Changes | [`CHANGELOG.md`](CHANGELOG.md) — semver, 0.x minors may break |
@@ -41,20 +41,20 @@ The demo uses a temporary SQLite database and a deterministic fixture model. It 
 
 ```powershell
 uv sync --system-certs
-.venv\Scripts\python.exe -m agentguard.cli demo
+.venv\Scripts\python.exe -m boundedllm.cli demo
 ```
 
-The package is also installed as `agentguard demo` after `uv sync`. The output shows a read response, a pending fee-waiver action, the exact stored action, a receipt after approval, and the same receipt on a replay. The fee is decremented once.
+The package is also installed as `boundedllm demo` after `uv sync`. The output shows a read response, a pending fee-waiver action, the exact stored action, a receipt after approval, and the same receipt on a replay. The fee is decremented once.
 
 ## Embed it in an existing service
 
-The core owns no storage. It depends on five small contracts in `agentguard.ports`,
+The core owns no storage. It depends on five small contracts in `boundedllm.ports`,
 which you implement over the systems you already run — your document store, your
-vector index, your audit pipeline, your rate limiter. Importing `agentguard` pulls
+vector index, your audit pipeline, your rate limiter. Importing `boundedllm` pulls
 in Pydantic and nothing else: no database driver, no HTTP client, no web framework.
 
 ```python
-from agentguard import ChatRequest, Guard, Limits, Principal
+from boundedllm import ChatRequest, Guard, Limits, Principal
 
 # Implement the ports over what you already have. Enforce authorization inside
 # the query, and raise on failure — returning [] reads as "nothing matched" and
@@ -91,15 +91,15 @@ If you would rather the package own its storage, install the `sql` extra and use
 the bundled adapter instead of writing any of the above:
 
 ```python
-from agentguard import Audit, Guard
-from agentguard.adapters.sql import SQLStore, sql_ports
+from boundedllm import Audit, Guard
+from boundedllm.adapters.sql import SQLStore, sql_ports
 
 audit = Audit(key)
-store = SQLStore(settings, audit)      # agentguard migrate creates the tables
+store = SQLStore(settings, audit)      # boundedllm migrate creates the tables
 guard = Guard(provider=provider, signer=audit, limits=settings.limits(), **sql_ports(store))
 ```
 
-`agentguard.contrib` supplies working implementations for common infrastructure, so
+`boundedllm.contrib` supplies working implementations for common infrastructure, so
 the ports above are usually a one-line import rather than something you write:
 
 | Port | Module | Extra |
@@ -115,7 +115,7 @@ it filters inside the ranked query rather than filtering the results, because
 ordering over rows the caller cannot read leaks their content through rank
 position even when those rows are dropped afterwards.
 
-`agentguard.support` is a complete worked example of one business domain — accounts,
+`boundedllm.support` is a complete worked example of one business domain — accounts,
 a fee-waiver policy, a tool registry, tables, and the consent/execution cycle. It is
 there to be read and copied, not extended in place; nothing in the core imports it.
 
@@ -134,7 +134,7 @@ prefer mapping an authorized document ID to a server-generated link where you ca
 differ from the proposing one, which the default does not: the default guarantees
 only that the *model* cannot approve, not that a stolen session cannot.
 
-The RoadShield application is only a consumer of the package. Production applications import from `agentguard`; they do not depend on RoadShield, FastAPI, Claude, or a particular agent framework. A LangGraph, CrewAI, Semantic Kernel, custom MCP host, background agent, or ordinary SaaS request handler can place the same `Guard` call immediately before its model boundary. The provider receives minimized authorized context, and the host receives only inspected `ChatResponse` data and deterministic tool decisions.
+The RoadShield application is only a consumer of the package. Production applications import from `boundedllm`; they do not depend on RoadShield, FastAPI, Claude, or a particular agent framework. A LangGraph, CrewAI, Semantic Kernel, custom MCP host, background agent, or ordinary SaaS request handler can place the same `Guard` call immediately before its model boundary. The provider receives minimized authorized context, and the host receives only inspected `ChatResponse` data and deterministic tool decisions.
 
 For application-specific actions, inject a `ToolExecutor`. It receives the verified request context, original idempotent request, untrusted proposal, and risk flags. The adapter must validate a strict per-tool argument schema, reload authorization facts, apply policy and approval, execute with least-privilege credentials, and return the narrow `ToolExecutionResult` contract. There is no default gateway: a proposal with no registered executor is denied, so an unconfigured host cannot accidentally act. `COMPLETE` lets a trusted adapter finish a mutation with an authoritative inspected receipt; `OK` feeds a minimized read result back to the model.
 
@@ -150,14 +150,14 @@ The library accepts text at its ingestion boundary. File-format validation, anti
 
 Every guard decision is stored as metadata-only JSON. Raw prompts, model responses, files, tokens, credentials, and PII are excluded. Each tenant has a monotonically increasing sequence, previous-record hash, record hash, HMAC signature, and signing `key_id`. This detects modification, removal, reordering, duplication, and truncation while the latest head or an externally archived checkpoint remains trusted.
 
-The audit record and `guard_audit_outbox` entry commit together. `agentguard outbox-export` sends pending signed envelopes to an OTLP/HTTP Logs endpoint with at-least-once delivery. A collector or SIEM deduplicates with `security.event_id`. Records are acknowledged only after a successful collector response and only when the event ID and record hash still match.
+The audit record and `guard_audit_outbox` entry commit together. `boundedllm outbox-export` sends pending signed envelopes to an OTLP/HTTP Logs endpoint with at-least-once delivery. A collector or SIEM deduplicates with `security.event_id`. Records are acknowledged only after a successful collector response and only when the event ID and record hash still match.
 
-For request traces and metrics, install `agentguard[telemetry]`, configure the OpenTelemetry SDK and exporters in the host, and pass `OpenTelemetryObservability()` as the `observability` argument to `Guard`. The hook creates `agentguard.chat` spans, safe decision events, a request counter, and a duration histogram. It does not install global providers or read exporter secrets. Telemetry failure cannot bypass or reverse a guard decision; the transactional signed ledger remains authoritative.
+For request traces and metrics, install `boundedllm[telemetry]`, configure the OpenTelemetry SDK and exporters in the host, and pass `OpenTelemetryObservability()` as the `observability` argument to `Guard`. The hook creates `boundedllm.chat` spans, safe decision events, a request counter, and a duration histogram. It does not install global providers or read exporter secrets. Telemetry failure cannot bypass or reverse a guard decision; the transactional signed ledger remains authoritative.
 
 ```powershell
 $env:GUARD_OTEL_LOGS_ENDPOINT = "https://otel.example.com/v1/logs"
 $env:GUARD_OTEL_AUTHORIZATION = "Bearer collector-credential"
-agentguard outbox-export --tenant tenant-a --limit 250
+boundedllm outbox-export --tenant tenant-a --limit 250
 ```
 
 Run the exporter continuously under a dedicated service identity or schedule bounded batches. Archive the signed NDJSON stream and checkpoints in retention-locked object storage. The operational database and SIEM support investigation, while the independent archive anchors ledger integrity. `audit checkpoint` adds a signed head checkpoint to the chain and outbox.
@@ -171,16 +171,16 @@ Retaining the previous key is not optional bookkeeping. Pending approval argumen
 The administrative CLI reads only security metadata:
 
 ```powershell
-agentguard audit list --tenant tenant-a --severity high --limit 100
-agentguard audit list --tenant tenant-a --event-type request_blocked --since 1787000000
-agentguard audit show EVENT_ID --tenant tenant-a
-agentguard audit verify --tenant tenant-a
-agentguard audit stats --tenant tenant-a
-agentguard audit checkpoint --tenant tenant-a --operator alice@example.com
-agentguard audit export --tenant tenant-a --output tenant-a-audit.ndjson
-agentguard quarantine list --tenant tenant-a
-agentguard quarantine inspect DOCUMENT_ID --tenant tenant-a
-agentguard retention-purge --tenant tenant-a --operator alice@example.com --policy customer-upload-30d --before-unix 1787000000 --yes
+boundedllm audit list --tenant tenant-a --severity high --limit 100
+boundedllm audit list --tenant tenant-a --event-type request_blocked --since 1787000000
+boundedllm audit show EVENT_ID --tenant tenant-a
+boundedllm audit verify --tenant tenant-a
+boundedllm audit stats --tenant tenant-a
+boundedllm audit checkpoint --tenant tenant-a --operator alice@example.com
+boundedllm audit export --tenant tenant-a --output tenant-a-audit.ndjson
+boundedllm quarantine list --tenant tenant-a
+boundedllm quarantine inspect DOCUMENT_ID --tenant tenant-a
+boundedllm retention-purge --tenant tenant-a --operator alice@example.com --policy customer-upload-30d --before-unix 1787000000 --yes
 ```
 
 `audit export` creates a new file exclusively so prior evidence is not overwritten. Use separate privileged database credentials for administrative commands. Quarantine inspection returns metadata and hashes rather than document text.
@@ -200,7 +200,7 @@ $env:GUARD_AUDIT_KEY = python -c "import secrets; print(secrets.token_urlsafe(48
 $env:GUARD_MODEL_URL = "https://model.example.com/v1/complete"
 $env:GUARD_ISSUER = "https://id.example.com/"
 $env:GUARD_JWKS_URL = "https://id.example.com/.well-known/jwks.json"
-.venv\Scripts\python.exe -m uvicorn "agentguard.main:create_app" --factory
+.venv\Scripts\python.exe -m uvicorn "boundedllm.main:create_app" --factory
 ```
 
 The model endpoint contract is a bounded HTTPS `POST` accepting `model`, `system`, `user`, `max_output_tokens`, and `temperature`, and returning exactly `{ "text": "..." }`. Keep vendor credentials in the host secret manager. A host can pass a reviewed, versioned `system_policy` to `Guard` for company-specific behavior; the prompt guides the model while identity, retrieval ACLs, schemas, tools, DLP, and egress remain enforced outside it. The API disables redirects and ambient proxy variables, caps request bodies, rejects compressed bodies, requires JSON, disables interactive API documentation, and emits CSP/security headers.
@@ -210,14 +210,14 @@ The model endpoint contract is a bounded HTTPS `POST` accepting `model`, `system
 Set `GUARD_ENVIRONMENT=production`, use `postgresql+psycopg://...`, set an explicit `GUARD_ALLOWED_TENANTS` value, and configure `GUARD_MODEL_URL`, a reviewed `GUARD_AUDIT_KEY`, and a real DLP backend. `GUARD_DLP_BACKEND=presidio` uses the bundled Presidio integration; `GUARD_DLP_BACKEND=reviewed` requires you to pass your own evaluated `Scanner` to `create_app`, which is the right choice where Presidio's footprint or false-negative profile is unacceptable. `pattern` is refused in production. Run the migration as an administrator during deployment:
 
 ```powershell
-agentguard migrate           # versioned Alembic revisions; never runs at app startup
-agentguard enable-rls        # as the table-owning migration role
-agentguard check-production  # as the application role, which must not own the tables
+boundedllm migrate           # versioned Alembic revisions; never runs at app startup
+boundedllm enable-rls        # as the table-owning migration role
+boundedllm check-production  # as the application role, which must not own the tables
 ```
 
 `init-db` creates tables directly from the models and is a development
 convenience. Production uses `migrate`, which leaves a reviewable history. For a
-database created before migrations existed, run `agentguard stamp` once to record
+database created before migrations existed, run `boundedllm stamp` once to record
 the baseline, then `migrate` from then on.
 
 [`OPERATIONS.md`](OPERATIONS.md) covers role separation, backup and restore
@@ -258,7 +258,7 @@ SQLite cannot exercise, so run them before trusting a release:
 
 ```powershell
 $env:TEST_POSTGRES_URL = "postgresql+psycopg://postgres:postgres@localhost:5432/guard_test"
-uv run agentguard migrate
+uv run boundedllm migrate
 uv run pytest -q -m postgres
 ```
 
@@ -295,15 +295,15 @@ responses.
 Once published to your organization’s package index, install the runtime package with:
 
 ```powershell
-python -m pip install agentguard            # core: ports + engine, Pydantic only
-python -m pip install "agentguard[sql]"     # bundled SQL implementation of the ports
-python -m pip install "agentguard[all]"     # SQL, PostgreSQL, and the reference HTTP API
+python -m pip install boundedllm            # core: ports + engine, Pydantic only
+python -m pip install "boundedllm[sql]"     # bundled SQL implementation of the ports
+python -m pip install "boundedllm[all]"     # SQL, PostgreSQL, and the reference HTTP API
 ```
 
 Install the optional Presidio integration when that is the DLP implementation approved by your security team:
 
 ```powershell
-python -m pip install "agentguard[pii]"
+python -m pip install "boundedllm[pii]"
 ```
 
-For an internal registry, use its normal index configuration, for example `pip install --index-url https://packages.example.com/simple agentguard`. For a local wheel or an internal Git checkout, install `agentguard-0.4.0-py3-none-any.whl` with `pip install path/to/wheel.whl`, or use `pip install .` from this project. The package exposes `Guard`, `Limits`, `Principal`, `ChatRequest`, and the port protocols in `agentguard.ports` as its stable integration surface; the `agentguard` command provides the demo and database administration commands.
+For an internal registry, use its normal index configuration, for example `pip install --index-url https://packages.example.com/simple boundedllm`. For a local wheel or an internal Git checkout, install `boundedllm-0.4.0-py3-none-any.whl` with `pip install path/to/wheel.whl`, or use `pip install .` from this project. The package exposes `Guard`, `Limits`, `Principal`, `ChatRequest`, and the port protocols in `boundedllm.ports` as its stable integration surface; the `boundedllm` command provides the demo and database administration commands.

@@ -13,11 +13,11 @@ import os
 
 import pytest
 
-from agentguard.contrib.anthropic import ASSISTANT_SCHEMA, AnthropicProvider
-from agentguard.contrib.ledger import StructuredLogLedger, TeeLedger
-from agentguard.errors import Unavailable
-from agentguard.model_gateway import ModelRequest
-from agentguard.models import Principal, RequestContext
+from boundedllm.contrib.anthropic import ASSISTANT_SCHEMA, AnthropicProvider
+from boundedllm.contrib.ledger import StructuredLogLedger, TeeLedger
+from boundedllm.errors import Unavailable
+from boundedllm.model_gateway import ModelRequest
+from boundedllm.models import Principal, RequestContext
 
 POSTGRES_URL = os.getenv("TEST_POSTGRES_URL")
 
@@ -43,7 +43,7 @@ async def test_structured_log_ledger_pseudonymizes_the_subject(caplog):
             return "f" * 64
 
     ledger = StructuredLogLedger(signer=Signer())
-    with caplog.at_level(logging.INFO, logger="agentguard.security"):
+    with caplog.at_level(logging.INFO, logger="boundedllm.security"):
         await ledger.event(ctx(), "request_blocked", code="NETWORK_REFERENCE", severity="high")
     record = json.loads(caplog.records[-1].message)
     assert record["subject_fingerprint"] == "f" * 64
@@ -227,7 +227,7 @@ async def pgvector_store():
 
 
 def build_documents(pool):
-    from agentguard.contrib.pgvector import PgVectorDocuments
+    from boundedllm.contrib.pgvector import PgVectorDocuments
 
     # The ORDER BY uses the pgvector operator, which this fixture's plain array
     # column does not implement, so ranking is stubbed. What is under test is the
@@ -240,7 +240,7 @@ def build_documents(pool):
 @pgvector_tests
 @pytest.mark.asyncio
 async def test_pgvector_returns_only_rows_the_caller_may_read(pgvector_store, monkeypatch):
-    from agentguard.contrib import pgvector as module
+    from boundedllm.contrib import pgvector as module
 
     adapter = build_documents(pgvector_store)
     # Replace only the similarity ordering; every predicate stays as shipped.
@@ -284,7 +284,7 @@ async def test_pgvector_returns_only_rows_the_caller_may_read(pgvector_store, mo
 @pytest.mark.asyncio
 async def test_pgvector_clearance_ceiling_lowers_what_a_risky_turn_can_see(pgvector_store, monkeypatch):
     """max_level is a ceiling the engine drops on a step-up turn; it must bind."""
-    from agentguard.contrib import pgvector as module
+    from boundedllm.contrib import pgvector as module
 
     adapter = build_documents(pgvector_store)
 
@@ -314,7 +314,7 @@ async def test_pgvector_clearance_ceiling_lowers_what_a_risky_turn_can_see(pgvec
 @pytest.mark.asyncio
 async def test_pgvector_reports_a_failed_embedding_instead_of_returning_nothing(pgvector_store):
     """An empty result reads as 'no matching documents' and hides the outage."""
-    from agentguard.contrib.pgvector import PgVectorDocuments
+    from boundedllm.contrib.pgvector import PgVectorDocuments
 
     def broken(_):
         raise RuntimeError("embedding service down")
@@ -330,6 +330,6 @@ async def test_pgvector_reports_a_failed_embedding_instead_of_returning_nothing(
 
 def test_asyncio_is_imported_for_the_thread_offload():
     """Guard against the embed call silently becoming blocking."""
-    from agentguard.contrib import pgvector
+    from boundedllm.contrib import pgvector
 
     assert asyncio is not None and hasattr(pgvector, "asyncio")

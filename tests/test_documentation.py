@@ -58,19 +58,19 @@ def test_the_version_is_declared_in_exactly_one_place():
     import re
     import tomllib
 
-    import agentguard
+    import boundedllm
 
     pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
-    assert pyproject["project"]["version"] == agentguard.__version__
+    assert pyproject["project"]["version"] == boundedllm.__version__
 
     # The changelog must have an entry for whatever the package claims to be.
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
-    assert f"## [{agentguard.__version__}]" in changelog, "no changelog entry for this version"
+    assert f"## [{boundedllm.__version__}]" in changelog, "no changelog entry for this version"
 
     # No other source file may restate it.
     pattern = re.compile(r'"\d+\.\d+\.\d+"')
     for path in (ROOT / "src").rglob("*.py"):
-        if path.name == "__init__.py" and path.parent.name == "agentguard":
+        if path.name == "__init__.py" and path.parent.name == "boundedllm":
             continue
         for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
             if pattern.search(line) and "version" in line.lower():

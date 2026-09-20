@@ -39,16 +39,16 @@ jobs:
       - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
         with: { enable-cache: true }
       # Deliberately no extras: install the package exactly as `pip install
-      # agentguard` would, then use it.
+      # boundedllm` would, then use it.
       - run: uv venv && uv pip install .
       - run: |
           uv run --no-project python - <<'PY'
           import importlib.util
           for forbidden in ("sqlalchemy", "fastapi", "httpx", "jwt", "pydantic_settings"):
               assert importlib.util.find_spec(forbidden) is None, f"{forbidden} reached the core install"
-          import agentguard
-          from agentguard import ChatRequest, Guard, Limits, Principal  # noqa: F401
-          print("core import surface is storage-free:", agentguard.__version__)
+          import boundedllm
+          from boundedllm import ChatRequest, Guard, Limits, Principal  # noqa: F401
+          print("core import surface is storage-free:", boundedllm.__version__)
           PY
 
   # PostgreSQL is where production runs and was the least-exercised path.
@@ -76,9 +76,9 @@ jobs:
       - run: uv sync --locked --dev --all-extras
       # Migrations must apply cleanly and then report no drift from the models.
       # Drift is how a schema quietly stops matching the ACL predicates built on it.
-      - run: uv run agentguard migrate
-      - run: uv run alembic -c src/agentguard/adapters/sql/alembic.ini check
-      - run: uv run agentguard enable-rls
+      - run: uv run boundedllm migrate
+      - run: uv run alembic -c src/boundedllm/adapters/sql/alembic.ini check
+      - run: uv run boundedllm enable-rls
       # RLS isolation, the contrib adapters' ACL predicates, and the concurrent
       # audit-chain test all need a real database.
       # RLS isolation, the contrib adapters' ACL predicates, the concurrent
@@ -107,7 +107,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - run: docker build -t agentguard:ci .
+      - run: docker build -t boundedllm:ci .
       # Run it the way the Dockerfile documents: read-only tree, tmpfs, no extra
       # capabilities. A container that only starts when it can write to itself is
       # not the artifact we intend to ship.
@@ -118,13 +118,13 @@ jobs:
             -e GUARD_AUDIT_KEY=ci-only-not-a-secret-at-least-32-bytes-long \
             -e GUARD_DATABASE_URL=sqlite:////tmp/guard.db \
             -e GUARD_MODEL_URL=https://model.example.com/v1/complete \
-            agentguard:ci
+            boundedllm:ci
           for i in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:8000/health/live; then echo; break; fi
             if [ "$i" = "30" ]; then echo "never became live"; docker logs guard-ci; exit 1; fi
             sleep 2
           done
-          test "$(docker inspect -f '{{.Config.User}}' agentguard:ci)" = "app" \
+          test "$(docker inspect -f '{{.Config.User}}' boundedllm:ci)" = "app" \
             || { echo "image does not run as the unprivileged app user"; exit 1; }
       - if: always()
         run: docker rm -f guard-ci || true
@@ -200,5 +200,5 @@ jobs:
       - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
         with: { enable-cache: true }
       - run: uv sync --locked --dev --all-extras
-      - run: uv run agentguard migrate
+      - run: uv run boundedllm migrate
       - run: uv run python scripts/load_check.py

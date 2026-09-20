@@ -4,7 +4,7 @@ requires = ["hatchling>=1.27,<2"]
 build-backend = "hatchling.build"
 
 [project]
-name = "agentguard"
+name = "boundedllm"
 version = "0.4.0"
 description = "Bound what a compromised LLM agent can reach and do"
 readme = "README.md"
@@ -49,9 +49,9 @@ api = [
 ]
 # Everything, which is what the reference deployment and CI install.
 all = [
-  "agentguard[sql,postgres,api]",
+  "boundedllm[sql,postgres,api]",
 ]
-# Ready-made port implementations in agentguard.contrib.
+# Ready-made port implementations in boundedllm.contrib.
 pgvector = ["psycopg[binary,pool]>=3.3,<4"]
 anthropic = ["anthropic>=0.75,<2"]
 # Presidio is optional because deployments must choose and evaluate their own DLP.
@@ -63,29 +63,29 @@ telemetry = [
 
 [dependency-groups]
 dev = [
-  "agentguard[all]",
+  "boundedllm[all]",
   "pytest>=8.4,<10", "pytest-asyncio>=1.3,<2", "ruff>=0.15,<1",
   "pip-audit>=2.10,<3", "build>=1.4,<2",
 ]
 
 [project.urls]
 # PyPI renders these as sidebar links. Replace ORG with your GitHub account.
-Homepage = "https://github.com/REPLACE_ORG/agentguard"
-Repository = "https://github.com/REPLACE_ORG/agentguard"
-Changelog = "https://github.com/REPLACE_ORG/agentguard/blob/main/CHANGELOG.md"
-Issues = "https://github.com/REPLACE_ORG/agentguard/issues"
-"Security Policy" = "https://github.com/REPLACE_ORG/agentguard/blob/main/SECURITY.md"
+Homepage = "https://github.com/taskul/boundedllm"
+Repository = "https://github.com/taskul/boundedllm"
+Changelog = "https://github.com/taskul/boundedllm/blob/main/CHANGELOG.md"
+Issues = "https://github.com/taskul/boundedllm/issues"
+"Security Policy" = "https://github.com/taskul/boundedllm/blob/main/SECURITY.md"
 
 [project.scripts]
-agentguard = "agentguard.cli:main"
+boundedllm = "boundedllm.cli:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/agentguard"]
+packages = ["src/boundedllm"]
 # Migrations are part of the shipped adapter, not repository tooling. Without
 # these the wheel installs a package whose documented production path cannot run.
 artifacts = [
-  "src/agentguard/adapters/sql/alembic.ini",
-  "src/agentguard/adapters/sql/migrations/**/*",
+  "src/boundedllm/adapters/sql/alembic.ini",
+  "src/boundedllm/adapters/sql/migrations/**/*",
 ]
 
 [tool.pytest.ini_options]

@@ -16,8 +16,8 @@ succeeded.
 ## 1. See it work (2 minutes)
 
 ```bash
-pip install "agentguard[sql]"
-agentguard demo
+pip install "boundedllm[sql]"
+boundedllm demo
 ```
 
 You will see a normal answer, then a fee waiver the model proposed, held for human
@@ -31,7 +31,7 @@ swap each piece for your real systems afterwards.
 
 ```python
 import asyncio, hashlib, hmac, json, time
-from agentguard import ChatRequest, Guard, Limits, Principal
+from boundedllm import ChatRequest, Guard, Limits, Principal
 
 # --- the four things you plug in -------------------------------------------
 
@@ -102,24 +102,24 @@ In rough order of value:
 
 | Port | What to use | Ready-made |
 |---|---|---|
-| `provider` | Your model SDK | `agentguard.contrib.anthropic` |
-| `ledger` | Your log or SIEM pipeline | `agentguard.contrib.ledger` |
-| `quotas` + `operations` | Anything durable and shared | `agentguard.adapters.sql` |
-| `documents` | Your RAG index | `agentguard.contrib.pgvector` |
-| `tool_executor` | Your actions | `agentguard.support` (example) |
+| `provider` | Your model SDK | `boundedllm.contrib.anthropic` |
+| `ledger` | Your log or SIEM pipeline | `boundedllm.contrib.ledger` |
+| `quotas` + `operations` | Anything durable and shared | `boundedllm.adapters.sql` |
+| `documents` | Your RAG index | `boundedllm.contrib.pgvector` |
+| `tool_executor` | Your actions | `boundedllm.support` (example) |
 
 With Claude and the bundled SQL storage:
 
 ```python
 from anthropic import AsyncAnthropic
-from agentguard import Audit, Guard
-from agentguard.adapters.sql import SQLStore, sql_ports
-from agentguard.config import Settings
-from agentguard.contrib.anthropic import AnthropicProvider
+from boundedllm import Audit, Guard
+from boundedllm.adapters.sql import SQLStore, sql_ports
+from boundedllm.config import Settings
+from boundedllm.contrib.anthropic import AnthropicProvider
 
 settings = Settings()                      # reads GUARD_* environment variables
 audit = Audit.from_settings(settings)
-store = SQLStore(settings, audit)          # run `agentguard migrate` first
+store = SQLStore(settings, audit)          # run `boundedllm migrate` first
 
 guard = Guard(
     provider=AnthropicProvider(AsyncAnthropic(), model="claude-opus-5"),
@@ -130,10 +130,10 @@ guard = Guard(
 ```
 
 ```bash
-pip install "agentguard[sql,anthropic]"
+pip install "boundedllm[sql,anthropic]"
 export GUARD_AUDIT_KEY=$(python -c "import secrets;print(secrets.token_hex(32))")
 export GUARD_DATABASE_URL=sqlite:///guard.db
-agentguard migrate
+boundedllm migrate
 ```
 
 ## The five ports
@@ -169,7 +169,7 @@ per-action in your own policy once you have decided which actions are safe.
 **Links are blocked entirely.** A model naming any host fails the turn, because a
 URL is an exfiltration channel with a path and a query attached. If you must cite
 your own domain: `Limits(citation_hosts={"help.yourco.com"})`, and read the
-warning in `agentguard.egress` first.
+warning in `boundedllm.egress` first.
 
 **`operation_id` must be stable across retries** of the same logical request and
 different for a new one. Reusing it with a different message is a `409`; reusing
@@ -184,10 +184,10 @@ Production requires a real scanner.
 If you want the reference HTTP service rather than an embedded library:
 
 ```bash
-pip install "agentguard[all]"
+pip install "boundedllm[all]"
 export GUARD_AUDIT_KEY=...  GUARD_DATABASE_URL=...  GUARD_MODEL_URL=https://...
-agentguard migrate
-uvicorn agentguard.main:create_app --factory
+boundedllm migrate
+uvicorn boundedllm.main:create_app --factory
 ```
 
 All three environment variables are required; the process exits at startup

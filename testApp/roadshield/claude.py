@@ -1,7 +1,7 @@
 """RoadShield's Claude wiring, built on the shipped contrib adapter.
 
 This file used to hand-roll an HTTP client for the Messages API. It now uses
-``agentguard.contrib.anthropic``, which is the point of having contrib at all: the
+``boundedllm.contrib.anthropic``, which is the point of having contrib at all: the
 lab exercises the same adapter a customer would install, against the real API, so
 a defect shows up here before it ships.
 
@@ -12,7 +12,7 @@ an invented name before the request is even parsed. The guard re-validates
 everything afterwards regardless; this only makes the common case cheaper.
 """
 
-from agentguard.contrib.anthropic import AnthropicProvider
+from boundedllm.contrib.anthropic import AnthropicProvider
 from pydantic import SecretStr
 
 # Tighter than the contrib default: the tool names are closed, and each tool's

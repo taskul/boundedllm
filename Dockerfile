@@ -50,5 +50,5 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
 #   docker run --read-only --tmpfs /tmp:rw,noexec,nosuid,size=64m \
 #     --cap-drop ALL --security-opt no-new-privileges \
 #     -e GUARD_AUDIT_KEY=... -e GUARD_DATABASE_URL=... -e GUARD_MODEL_URL=... \
-#     -p 8000:8000 agentguard
-CMD ["uvicorn", "agentguard.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
+#     -p 8000:8000 boundedllm
+CMD ["uvicorn", "boundedllm.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]

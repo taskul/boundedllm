@@ -24,15 +24,15 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import select
 
-from agentguard.adapters.sql.schema import audit_events, documents, operations
-from agentguard.config import Settings
-from agentguard.egress import citation_allowlist, inspect_egress
-from agentguard.errors import Conflict, Denied, LimitExceeded, OutputBlocked, Unavailable
-from agentguard.models import ChatRequest, IngestRequest
-from agentguard.normalize import normalize
-from agentguard.risk import assess
-from agentguard.support import SupportPolicy
-from agentguard.support.schema import accounts
+from boundedllm.adapters.sql.schema import audit_events, documents, operations
+from boundedllm.config import Settings
+from boundedllm.egress import citation_allowlist, inspect_egress
+from boundedllm.errors import Conflict, Denied, LimitExceeded, OutputBlocked, Unavailable
+from boundedllm.models import ChatRequest, IngestRequest
+from boundedllm.normalize import normalize
+from boundedllm.risk import assess
+from boundedllm.support import SupportPolicy
+from boundedllm.support.schema import accounts
 from tests.harness import (
     ScriptedProvider,
     build,
@@ -187,7 +187,7 @@ async def test_expired_consent_cannot_be_redeemed_later(tmp_path):
         ),
     )
     with store.transaction("tenant-a") as conn:
-        from agentguard.support.schema import actions
+        from boundedllm.support.schema import actions
 
         conn.execute(
             actions.update()
@@ -964,7 +964,7 @@ def test_signal_only_hidden_unicode_is_blocked_outright():
 
 def test_signal_only_the_default_scanner_misses_common_identifiers():
     """The bundled PatternScanner is a test baseline. Production supplies real DLP."""
-    from agentguard.output_firewall import PII
+    from boundedllm.output_firewall import PII
 
     assert PII.search("123-45-6789") is not None
     assert PII.search("alex@example.test") is not None

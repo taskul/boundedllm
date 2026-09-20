@@ -24,15 +24,15 @@ from concurrent.futures import ThreadPoolExecutor
 import pytest
 from sqlalchemy import insert, select, text
 
-from agentguard.adapters.sql import sql_ports
-from agentguard.adapters.sql.schema import audit_events, metadata
-from agentguard.audit import Audit
-from agentguard.config import Settings
-from agentguard.engine import Guard
-from agentguard.models import ChatRequest, Principal, TurnFlags
-from agentguard.support import SupportPolicy, SupportSQLStore, ToolGateway
-from agentguard.support.models import WaiveFeeArgs
-from agentguard.support.schema import accounts, actions
+from boundedllm.adapters.sql import sql_ports
+from boundedllm.adapters.sql.schema import audit_events, metadata
+from boundedllm.audit import Audit
+from boundedllm.config import Settings
+from boundedllm.engine import Guard
+from boundedllm.models import ChatRequest, Principal, TurnFlags
+from boundedllm.support import SupportPolicy, SupportSQLStore, ToolGateway
+from boundedllm.support.models import WaiveFeeArgs
+from boundedllm.support.schema import accounts, actions
 
 pytestmark = pytest.mark.postgres
 
@@ -313,7 +313,7 @@ async def test_an_expired_session_cannot_win_an_approval_race(clean_database):
     )
     # Built directly, not through guard.context(), which would reject the expired
     # principal up front. The point is whether the store still refuses it deeper in.
-    from agentguard.models import RequestContext
+    from boundedllm.models import RequestContext
 
     ctx = RequestContext(request_id=secrets.token_hex(16), principal=expired)
     results = race(lambda _: store.approve(ctx, action_id, policy))

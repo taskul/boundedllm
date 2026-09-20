@@ -21,11 +21,11 @@ import pytest
 from sqlalchemy import create_engine, insert, select, text
 from sqlalchemy.exc import DBAPIError
 
-from agentguard.adapters.sql.schema import documents, metadata
-from agentguard.audit import Audit
-from agentguard.config import Settings
-from agentguard.errors import Unavailable
-from agentguard.support.store import SupportSQLStore
+from boundedllm.adapters.sql.schema import documents, metadata
+from boundedllm.audit import Audit
+from boundedllm.config import Settings
+from boundedllm.errors import Unavailable
+from boundedllm.support.store import SupportSQLStore
 
 pytestmark = pytest.mark.postgres
 
@@ -63,7 +63,7 @@ def fresh_schema():
             )
         )
     metadata.create_all(engine)
-    import agentguard.support.schema  # noqa: F401  registers the domain tables
+    import boundedllm.support.schema  # noqa: F401  registers the domain tables
 
     metadata.create_all(engine)
     with engine.begin() as conn:
@@ -216,7 +216,7 @@ def test_the_audit_chain_holds_under_concurrent_writers(fresh_schema):
     settings = Settings(database_url=POSTGRES_URL, audit_key=secrets.token_hex(32))
     audit = Audit.from_settings(settings)
     stores = [SupportSQLStore(settings, audit) for _ in range(4)]
-    from agentguard.models import Principal, RequestContext
+    from boundedllm.models import Principal, RequestContext
 
     def append(store):
         for _ in range(10):
@@ -257,10 +257,10 @@ async def test_concurrent_retries_of_one_operation_execute_exactly_once(fresh_sc
     import json
     from uuid import uuid4
 
-    from agentguard.adapters.sql import sql_ports
-    from agentguard.engine import Guard
-    from agentguard.errors import Conflict, GuardError
-    from agentguard.models import ChatRequest, Principal
+    from boundedllm.adapters.sql import sql_ports
+    from boundedllm.engine import Guard
+    from boundedllm.errors import Conflict, GuardError
+    from boundedllm.models import ChatRequest, Principal
 
     class CountingProvider:
         def __init__(self):

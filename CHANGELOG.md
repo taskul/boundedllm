@@ -7,9 +7,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This package uses [Semantic Versioning](https://semver.org/). While the major
 version is `0`, the minor version carries breaking changes.
 
-**The public API** is what `agentguard/__init__.py` exports, plus the protocols in
-`agentguard.ports`, `agentguard.tool_gateway`, and `agentguard.model_gateway`.
-`agentguard.adapters.*` and `agentguard.support.*` are supported but may change more
+**The public API** is what `boundedllm/__init__.py` exports, plus the protocols in
+`boundedllm.ports`, `boundedllm.tool_gateway`, and `boundedllm.model_gateway`.
+`boundedllm.adapters.*` and `boundedllm.support.*` are supported but may change more
 freely; anything with a leading underscore is private.
 
 **Security fixes** ship in a patch release for the current minor version and are
@@ -19,14 +19,14 @@ earlier than the release after that. A change that narrows what is permitted is
 treated as a security fix, not a breaking change, and may ship in a patch.
 
 **Database changes** ship as Alembic revisions under
-`agentguard/adapters/sql/migrations`. Run `agentguard migrate` before rolling out a
+`boundedllm/adapters/sql/migrations`. Run `boundedllm migrate` before rolling out a
 new version. A release never modifies a database at application startup.
 
 ## [0.4.0] - 2026-09-19
 
 ### Added
 
-- `agentguard.contrib` — ready-made port implementations: `pgvector` (a
+- `boundedllm.contrib` — ready-made port implementations: `pgvector` (a
   `Documents` port that puts every ACL predicate inside the ranked query),
   `anthropic` (a `ModelProvider` on the official SDK), and `ledger`
   (`StructuredLogLedger`, `TeeLedger`, `BufferedHTTPLedger`). New extras:
@@ -80,7 +80,7 @@ new version. A release never modifies a database at application startup.
   attack demonstration is reproducible and CI can run it. Its local state
   (`.env`, `.roadshield-dev-secret`, `testapp.db`, virtual environment) stays
   ignored.
-- `testApp` uses the shipped `agentguard.contrib.anthropic` adapter instead of a
+- `testApp` uses the shipped `boundedllm.contrib.anthropic` adapter instead of a
   hand-rolled HTTP client, so the lab exercises what a customer installs. Its
   default model is `claude-opus-5`.
 - The live attack runner reports whether each attack was stopped by the guard or
@@ -100,19 +100,19 @@ a host implements over its own storage.
   documents=..., tool_executor=...)`. `Guard.from_settings` is removed.
 - The core no longer depends on SQLAlchemy, psycopg, FastAPI, uvicorn, httpx,
   PyJWT, cryptography, or pydantic-settings. Core runtime dependencies went from
-  nine packages to one. Install `agentguard[sql]` for the bundled
+  nine packages to one. Install `boundedllm[sql]` for the bundled
   storage adapter, `[api]` for the reference HTTP service, or `[all]` for both.
-- `agentguard.store` moved to `agentguard.adapters.sql.store`; `agentguard.schema`
-  to `agentguard.adapters.sql.schema`.
-- `HTTPModelProvider` moved to `agentguard.adapters.http_model`. The OTLP sink and
-  `export_pending` moved to `agentguard.adapters.otlp`.
-- Domain-specific code left the core for `agentguard.support`: `Account`,
+- `boundedllm.store` moved to `boundedllm.adapters.sql.store`; `boundedllm.schema`
+  to `boundedllm.adapters.sql.schema`.
+- `HTTPModelProvider` moved to `boundedllm.adapters.http_model`. The OTLP sink and
+  `export_pending` moved to `boundedllm.adapters.otlp`.
+- Domain-specific code left the core for `boundedllm.support`: `Account`,
   `WaiveFeeArgs`, `GetAccountSummaryArgs`, `PendingAction`, `ToolDecision`,
   `AccountID`, `can_access_account`, `SupportPolicy`, `ToolGateway`,
   `account_summary`, and the `guard_accounts` and `guard_actions` tables.
 - `Guard` has no default tool registry. A proposal with no registered executor is
   denied, so an unconfigured host cannot act by accident. Supply a
-  `ToolExecutor`, or `agentguard.support.ToolGateway` for the reference domain.
+  `ToolExecutor`, or `boundedllm.support.ToolGateway` for the reference domain.
 - The engine takes `Limits` rather than `Settings`, so embedding it no longer
   requires a database URL or a JWKS URL. `Settings.limits()` builds one.
 - `SupportPolicy.waive_fee` accepts an optional `proposed_by` argument, supplied
@@ -120,10 +120,10 @@ a host implements over its own storage.
 
 ### Added
 
-- `agentguard.ports` — `Documents`, `Operations`, `Quotas`, `Ledger`, `Signer`.
-- `agentguard.adapters.sql.sql_ports(store)` to compose the bundled adapter in one
+- `boundedllm.ports` — `Documents`, `Operations`, `Quotas`, `Ledger`, `Signer`.
+- `boundedllm.adapters.sql.sql_ports(store)` to compose the bundled adapter in one
   call, and `SQLAdapter`, which owns the threading policy for synchronous SQL.
-- Alembic migrations, `agentguard migrate`, and `agentguard stamp` for databases
+- Alembic migrations, `boundedllm migrate`, and `boundedllm stamp` for databases
   created before this release. Migrations ship inside the wheel.
 - `SupportPolicy(require_separate_approver=True)` for deployments where a
   compromised session must not be able to approve its own proposal.
@@ -162,11 +162,11 @@ a host implements over its own storage.
   carved out and left to the DLP layer, which redacts the whole address.
 - The injection tripwire matched essentially one phrasing; it now covers the
   common blunt forms. It remains a signal, not a control — see `SECURITY.md`.
-- `agentguard audit verify` exits `2` when the chain is broken. It previously
+- `boundedllm audit verify` exits `2` when the chain is broken. It previously
   exited `0`, so a scheduled integrity check could never fail.
 - Ledger-writing CLI commands require `--operator`, recorded as the acting
   subject. Destructive actions were previously attributed to a constant
-  `agentguard-cli` identity. `retention-purge` also requires `--yes`.
+  `boundedllm-cli` identity. `retention-purge` also requires `--yes`.
 
 ### Documentation
 

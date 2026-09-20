@@ -1,6 +1,6 @@
 """The Claude adapter sends what we expect and never puts the key in a body.
 
-RoadShield now uses the shipped ``agentguard.contrib.anthropic`` adapter rather
+RoadShield now uses the shipped ``boundedllm.contrib.anthropic`` adapter rather
 than a hand-rolled client, so this exercises the real adapter through a mocked
 transport: the SDK builds the request, and the assertions are about what actually
 goes on the wire.
@@ -11,9 +11,9 @@ import json
 
 # The SDK is built on httpx2; an httpx client is rejected at construction.
 import httpx2 as httpx
-from agentguard.errors import Unavailable
-from agentguard.model_gateway import ModelRequest
 from anthropic import AsyncAnthropic
+from boundedllm.errors import Unavailable
+from boundedllm.model_gateway import ModelRequest
 from pydantic import SecretStr
 
 from roadshield.claude import ROADSHIELD_SCHEMA, ClaudeProvider

@@ -13,7 +13,7 @@ architecture can actually support.
 
 ## What this package does not do
 
-**It does not detect prompt injection.** `agentguard.risk` matches a handful of
+**It does not detect prompt injection.** `boundedllm.risk` matches a handful of
 blunt override phrasings. Paraphrase defeats it, and
 `tests/test_adversarial.py` contains passing tests that demonstrate the evasion
 on purpose. It is a tripwire that lowers a turn's clearance and raises an alert.

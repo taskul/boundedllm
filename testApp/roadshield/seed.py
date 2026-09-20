@@ -2,9 +2,9 @@
 
 import time
 
-from agentguard.adapters.sql.store import SQLStore
-from agentguard.models import IngestRequest, Principal
-from agentguard.support.schema import accounts
+from boundedllm.adapters.sql.store import SQLStore
+from boundedllm.models import IngestRequest, Principal
+from boundedllm.support.schema import accounts
 from sqlalchemy import insert, select
 
 from roadshield.knowledge import policy_sections
@@ -101,7 +101,7 @@ def seed(app_store: AppStore, guard_store: SQLStore) -> None:
                 )
         if not _conversation_exists(guard_store, principal, conversation_id):
             with guard_store.transaction(item["tenant_id"]) as conn:
-                from agentguard.adapters.sql.schema import conversations
+                from boundedllm.adapters.sql.schema import conversations
 
                 conn.execute(
                     insert(conversations).values(
@@ -170,7 +170,7 @@ def seed(app_store: AppStore, guard_store: SQLStore) -> None:
 def _context(principal: Principal):
     from uuid import uuid4
 
-    from agentguard.models import RequestContext
+    from boundedllm.models import RequestContext
 
     return RequestContext(request_id=uuid4().hex, principal=principal)
 
@@ -182,7 +182,7 @@ def _conversation_for(email: str) -> str:
 
 
 def _conversation_exists(store: SQLStore, principal: Principal, conversation_id: str) -> bool:
-    from agentguard.adapters.sql.schema import conversations
+    from boundedllm.adapters.sql.schema import conversations
 
     with store.transaction(principal.tenant_id) as conn:
         return bool(
@@ -195,7 +195,7 @@ def _conversation_exists(store: SQLStore, principal: Principal, conversation_id:
 
 
 def _ingest_once(store: SQLStore, ctx, request: IngestRequest) -> None:
-    from agentguard.adapters.sql.schema import documents
+    from boundedllm.adapters.sql.schema import documents
 
     with store.transaction(ctx.principal.tenant_id) as conn:
         existing = (

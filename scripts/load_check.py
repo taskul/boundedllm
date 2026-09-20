@@ -30,13 +30,13 @@ from uuid import uuid4
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from agentguard.adapters.sql import sql_ports  # noqa: E402
-from agentguard.audit import Audit  # noqa: E402
-from agentguard.config import Settings  # noqa: E402
-from agentguard.engine import Guard  # noqa: E402
-from agentguard.errors import Conflict, GuardError, LimitExceeded  # noqa: E402
-from agentguard.models import ChatRequest, Principal  # noqa: E402
-from agentguard.support import SupportPolicy, SupportSQLStore, ToolGateway  # noqa: E402
+from boundedllm.adapters.sql import sql_ports  # noqa: E402
+from boundedllm.audit import Audit  # noqa: E402
+from boundedllm.config import Settings  # noqa: E402
+from boundedllm.engine import Guard  # noqa: E402
+from boundedllm.errors import Conflict, GuardError, LimitExceeded  # noqa: E402
+from boundedllm.models import ChatRequest, Principal  # noqa: E402
+from boundedllm.support import SupportPolicy, SupportSQLStore, ToolGateway  # noqa: E402
 
 CONCURRENCY = 40
 USER_LIMIT = 20

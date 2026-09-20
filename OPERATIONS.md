@@ -11,10 +11,10 @@ Run these before a rollout is considered done. Each fails loudly; none of them i
 advisory.
 
 ```powershell
-agentguard migrate                 # versioned schema, never at application startup
-agentguard enable-rls              # as the table-owning migration role
-agentguard check-production        # as the application role, which must NOT own the tables
-agentguard audit verify --tenant <tenant>   # exit 2 means the chain is broken
+boundedllm migrate                 # versioned schema, never at application startup
+boundedllm enable-rls              # as the table-owning migration role
+boundedllm check-production        # as the application role, which must NOT own the tables
+boundedllm audit verify --tenant <tenant>   # exit 2 means the chain is broken
 ```
 
 `check-production` refuses a superuser, a `BYPASSRLS` role, an application role
@@ -51,8 +51,8 @@ cannot verify is not evidence.
 **Restore drill.** Restore into an isolated database and run, in order:
 
 ```powershell
-agentguard check-production
-agentguard audit verify --tenant <tenant>   # must exit 0
+boundedllm check-production
+boundedllm audit verify --tenant <tenant>   # must exit 0
 ```
 
 A restore that reports `"valid": false` means the backup is torn or the key set
@@ -86,7 +86,7 @@ secret manager or an HSM, never on a laptop and never in shell history.
 1. Generate the new key and add it to the secret store.
 2. Set `GUARD_AUDIT_KEY` to the new value, `GUARD_AUDIT_KEY_ID` to a new
    identifier, and add the **previous** key to `GUARD_AUDIT_PREVIOUS_KEYS`.
-3. Roll out. Verify: `agentguard audit verify --tenant <tenant>` must still exit 0
+3. Roll out. Verify: `boundedllm audit verify --tenant <tenant>` must still exit 0
    and report `unverifiable_key_versions: 0`.
 
 **Retaining.** Keep every retired key for as long as you retain the records it
@@ -159,13 +159,13 @@ potential data-exposure incident, not a bug report.
    The service holds no session state of its own; `expires_at` on the principal is
    checked at each step, so revocation takes effect within token lifetime. Shorten
    `max_token_lifetime_seconds` if that window is too wide.
-2. **Preserve.** `agentguard audit export --tenant <tenant> --output <file>` writes
+2. **Preserve.** `boundedllm audit export --tenant <tenant> --output <file>` writes
    signed envelopes to a new file; it refuses to overwrite existing evidence.
    Copy it to retention-locked storage before further work.
-3. **Scope.** `agentguard audit list --tenant <tenant> --severity high --since <ts>`
+3. **Scope.** `boundedllm audit list --tenant <tenant> --severity high --since <ts>`
    and `audit show <event_id>`. Events carry fingerprints, not content, so
    correlating a subject requires the pseudonym key and the subject list together.
-4. **Quarantine.** `agentguard quarantine list --tenant <tenant>` for documents held
+4. **Quarantine.** `boundedllm quarantine list --tenant <tenant>` for documents held
    back from retrieval. Metadata and hashes only; extracted text is never returned.
 5. **Record.** `POST /api/security/events/{id}/case` links an event to your case
    system. The ledger stores the state and an external case id, never analyst

@@ -2,11 +2,11 @@
 [project]
 name = "roadshield-attack-lab"
 version = "0.1.0"
-description = "Synthetic car-insurance agent used to exercise agentguard"
+description = "Synthetic car-insurance agent used to exercise boundedllm"
 requires-python = ">=3.11"
 dependencies = [
   # The lab uses the SQL adapter, the reference support domain, and Claude.
-  "agentguard[sql,anthropic]",
+  "boundedllm[sql,anthropic]",
   "fastapi>=0.135,<1",
   "httpx>=0.28,<1",
   "pypdf>=6.1,<7",
@@ -21,7 +21,7 @@ dev = ["pytest>=9,<10", "ruff>=0.16,<1"]
 
 [tool.uv.sources]
 # uv installs the library from the parent checkout, so tests cover the package under development.
-agentguard = { path = "..", editable = true }
+boundedllm = { path = "..", editable = true }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

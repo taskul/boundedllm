@@ -11,14 +11,14 @@ from uuid import uuid4
 
 from sqlalchemy import insert
 
-from agentguard.adapters.sql import sql_ports
-from agentguard.audit import Audit
-from agentguard.config import Settings
-from agentguard.engine import Guard
-from agentguard.model_gateway import ModelRequest
-from agentguard.models import Principal
-from agentguard.support import SupportPolicy, SupportSQLStore, ToolGateway
-from agentguard.support.schema import accounts
+from boundedllm.adapters.sql import sql_ports
+from boundedllm.audit import Audit
+from boundedllm.config import Settings
+from boundedllm.engine import Guard
+from boundedllm.model_gateway import ModelRequest
+from boundedllm.models import Principal
+from boundedllm.support import SupportPolicy, SupportSQLStore, ToolGateway
+from boundedllm.support.schema import accounts
 
 ALL_SCOPES = frozenset(
     {

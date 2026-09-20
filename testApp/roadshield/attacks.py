@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from agentguard.egress import NETWORK_REFERENCE
+from boundedllm.egress import NETWORK_REFERENCE
 
 
 def _has_network_reference(answer: str) -> bool:
